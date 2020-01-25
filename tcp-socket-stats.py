@@ -13,6 +13,7 @@ import sys
 import subprocess
 import operator
 from collections import namedtuple, defaultdict
+from names import string_to_name
 
 # how many sockets to show in the result list
 TOP = 15
@@ -147,13 +148,18 @@ def main():
     for line1, line2 in zip(lines[::2], lines[1::2]):  # each socket occupies two lines in the output
         process_socket_line(line1 + ' ' + line2)
 
-    print("%-9s  %-21s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % ("LocalPort", "Client", "State", "Backoff", "Timer", "LastACK", "SendQueue", "RecvQueue", "BytesRecv"))
+    print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % \
+        ("LocalPort", "Client", "Alias", "State", "Backoff", "Timer", "SendQueue", "RecvQueue", "BytesRecv", "LastACK"))
+
     for socket in sorted(sockets, key=lambda socket: socket.lastack, reverse=True)[:TOP]:
-        print("%-9s  %-21s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % (socket.local_port, socket.remote_addr, socket.state, str(socket.backoff), socket.timer, str(socket.lastack) + "ms", \
-            str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received)))
+        alias = string_to_name(socket.remote_addr)
+        print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % \
+            (socket.local_port, socket.remote_addr, alias, socket.state, str(socket.backoff), socket.timer, \
+            str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received), str(socket.lastack) + "ms"))
 
     print('')
     print('Total clients: %d' % len(sockets))
+    print('')
     print_counts_by_state()
 
 
