@@ -11,6 +11,12 @@ Optionally, you may pass your server's listening port to filter client sockets:
 
     watch -n1 ./tcp-socket-stats.py 8080
 
+You can also filter sockets by state:
+
+    watch -n1 ./tcp-socket-stats.py 8080 established
+
+Refer to `man ss` for valid state strings. If you want to filter by state but not by port, pass `0` as the port.
+
 ## Acknowledgements
 
 I am using a list of names taken from [this project](https://github.com/treyhunner/names) (license [here](https://github.com/treyhunner/names/blob/master/LICENSE.txt)).
