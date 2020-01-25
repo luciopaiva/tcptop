@@ -4,7 +4,8 @@
 # by Lucio Paiva
 # 2020 01 25
 #
-# This script can be used to shed some light into what is happening with your clients' connections. It parses and digests the output of the `ss` command.
+# This script can be used to shed some light into what is happening with your clients' connections. It parses and 
+# digests the output of the `ss` command.
 #
 # Reference for the ss field descriptions: http://man7.org/linux/man-pages/man8/ss.8.html
 #
@@ -20,8 +21,8 @@ TOP = 15
 
 ss_params = ['ss', '-minto', 'state', 'connected']
 
-Socket = namedtuple("Socket", "state local_addr remote_addr send_queue recv_queue retrans_cur retrans_total send_window_scale " + \
-    "recv_window_scale congestion_window bytes_received lastack backoff timer local_port")
+Socket = namedtuple("Socket", "state local_addr remote_addr send_queue recv_queue retrans_cur retrans_total " + \
+    "send_window_scale recv_window_scale congestion_window bytes_received lastack backoff timer local_port")
 
 sockets = []
 
@@ -71,9 +72,11 @@ def process_socket_line(socket_line):
         elif field.startswith('timer:'):
             timer = parse_timer(field)
 
-    socket = Socket(state=state, local_addr=local_addr, remote_addr=remote_addr, recv_queue=recv_queue, send_queue=send_queue, retrans_cur=retrans_cur, \
-        retrans_total=retrans_total, send_window_scale=send_window_scale, recv_window_scale=recv_window_scale, congestion_window=congestion_window, \
-        bytes_received=bytes_received, lastack=lastack, timer=timer, backoff=backoff, local_port=local_port)
+    socket = Socket(state=state, local_addr=local_addr, remote_addr=remote_addr, recv_queue=recv_queue, \
+        send_queue=send_queue, retrans_cur=retrans_cur, retrans_total=retrans_total, \
+        send_window_scale=send_window_scale, recv_window_scale=recv_window_scale, \
+        congestion_window=congestion_window, bytes_received=bytes_received, lastack=lastack, timer=timer, \
+        backoff=backoff, local_port=local_port)
     sockets.append(socket)
 
 
