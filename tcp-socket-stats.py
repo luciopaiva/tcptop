@@ -24,7 +24,7 @@ ss_params = ['ss', '-minto']
 
 Socket = namedtuple("Socket", "state local_addr remote_addr send_queue recv_queue retrans_cur retrans_total " + \
     "send_window_scale recv_window_scale congestion_window bytes_received lastack backoff timer local_port unacked " + \
-    "rto")
+    "rto mss ssthresh segs_out segs_in")
 
 sockets = []
 
@@ -65,6 +65,10 @@ def process_socket_line(socket_line):
     timer = 0
     unacked = 0
     rto = 0
+    mss = 0
+    ssthresh = 0
+    segs_out = 0
+    segs_in = 0
 
     for field in fields:
         if field.startswith('retrans:'):
@@ -85,12 +89,21 @@ def process_socket_line(socket_line):
             unacked = parse_unacked(field)
         elif field.startswith('rto:'):
             rto = parse_rto(field)
+        elif field.startswith('mss:'):
+            mss = parse_mss(field)
+        elif field.startswith('ssthresh:'):
+            ssthresh = parse_ssthresh(field)
+        elif field.startswith('segs_out:'):
+            segs_out = parse_segs_out(field)
+        elif field.startswith('segs_in:'):
+            segs_in = parse_segs_in(field)
 
     socket = Socket(state=state, local_addr=local_addr, remote_addr=remote_addr, recv_queue=recv_queue, \
         send_queue=send_queue, retrans_cur=retrans_cur, retrans_total=retrans_total, \
         send_window_scale=send_window_scale, recv_window_scale=recv_window_scale, \
         congestion_window=congestion_window, bytes_received=bytes_received, lastack=lastack, timer=timer, \
-        backoff=backoff, local_port=local_port, unacked=unacked, rto=rto)
+        backoff=backoff, local_port=local_port, unacked=unacked, rto=rto, mss=mss, ssthresh=ssthresh, \
+        segs_out=segs_out, segs_in=segs_in)
     sockets.append(socket)
 
 
@@ -163,6 +176,30 @@ def parse_rto(field):
     """
     return int(field[4:])
 
+def parse_mss(field):
+    """ mss:1500
+        maximum segment size, in bytes
+    """
+    return int(field[4:])
+
+def parse_ssthresh(field):
+    """ ssthresh:2
+        slow start threshold
+    """
+    return int(field[9:])
+
+def parse_segs_out(field):
+    """ segs_out:10
+        segments sent
+    """
+    return int(field[9:])
+
+def parse_segs_in(field):
+    """ segs_in:10
+        segments received
+    """
+    return int(field[8:])
+
 def print_counts_by_state():
     counts_by_state = defaultdict(int)
     for socket in sockets:
@@ -184,17 +221,20 @@ def main():
     for line1, line2 in zip(lines[::2], lines[1::2]):  # each socket occupies two lines in the output
         process_socket_line(line1 + ' ' + line2)
 
-    print("%-9s  %-21s  %-11s  %-12s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s  %-7s  %-5s  %-7s  %-10s" % \
+    print(("%-9s  %-21s  %-11s  %-12s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s  %-7s  %-5s  %-7s  %-5s  %-7s  %-7s  %-7s" + \
+        "  %-10s") % \
         ("LocalPort", "Client", "Alias", "State", "Backoff", "RTO", "Timer", "SendQueue", "RecvQueue", "BytesRecv", \
-        "Unacked", "RTCur", "RTTotal", "LastACK"))
+        "Unacked", "RTCur", "RTTotal", "MSS", "SSThres", "SegsOut", "SegsIn", "LastACK"))
 
     for socket in sorted(sockets, key=lambda socket: socket.lastack, reverse=True)[:TOP]:
         alias = string_to_name(socket.remote_addr)
         last_ack_human = time_to_human(socket.lastack)
-        print("%-9s  %-21s  %-11s  %-12s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s  %-7d  %-5d  %-7d  %-10s" % \
+        print(("%-9s  %-21s  %-11s  %-12s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s  %-7d  %-5d  %-7d  %-5d  %-7d  %-7d" + \
+            "  %-7d  %-10s") % \
             (socket.local_port, socket.remote_addr, alias, socket.state, str(socket.backoff), socket.rto, \
             socket.timer, str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received), socket.unacked, \
-            socket.retrans_cur, socket.retrans_total, last_ack_human))
+            socket.retrans_cur, socket.retrans_total, socket.mss, socket.ssthresh, socket.segs_in, socket.segs_in, \
+            last_ack_human))
 
     print('')
     print('Total clients: %d' % len(sockets))
