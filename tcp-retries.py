@@ -1,11 +1,10 @@
 #!/usr/bin/env python2.7
 #
-# tcp-sockets.py
+# tcp-retries.py
 # by Lucio Paiva
 # 2020 01 25
 #
-# This script can be used to shed some light into what is happening with your clients' connections. It parses and 
-# digests the output of the `ss` command.
+# This script shows your top clients wrt TCP retransmission problems. It probes the `ss` command to obtain the data.
 #
 # Reference for the ss field descriptions: http://man7.org/linux/man-pages/man8/ss.8.html
 #
