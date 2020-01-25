@@ -141,6 +141,12 @@ def print_counts_by_state():
     for state, count in sorted(counts_by_state.items(), key=operator.itemgetter(0)):
         print('- %s: %d' % (state, count))
 
+def time_to_human(time):
+    time_in_secs = time // 1000
+    minutes = time_in_secs // 60
+    seconds = time_in_secs % 60
+    return "%dmin%dsec" % (minutes, seconds)
+
 def main():
     lines = run_ss()
     # run ss and obtain raw data from it
@@ -153,9 +159,10 @@ def main():
 
     for socket in sorted(sockets, key=lambda socket: socket.lastack, reverse=True)[:TOP]:
         alias = string_to_name(socket.remote_addr)
+        last_ack_human = time_to_human(socket.lastack)
         print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % \
             (socket.local_port, socket.remote_addr, alias, socket.state, str(socket.backoff), socket.timer, \
-            str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received), str(socket.lastack) + "ms"))
+            str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received), last_ack_human))
 
     print('')
     print('Total clients: %d' % len(sockets))
