@@ -9,19 +9,15 @@
 # Reference for the ss field descriptions: http://man7.org/linux/man-pages/man8/ss.8.html
 #
 
+import sys
 import subprocess
 import operator
 from collections import namedtuple, defaultdict
 
-# this is your server's listening port - this will help filter ss's results
-# set it to zero to disable filtering by port
-PORT = 0
 # how many sockets to show in the result list
 TOP = 20
 
 ss_params = ['ss', '-minto', 'state', 'connected']
-if PORT > 0:
-    ss_params.append('( sport = :' + str(PORT) + ' )')
 
 Socket = namedtuple("Socket", "state local_addr remote_addr send_queue recv_queue retrans_cur retrans_total send_window_scale " + \
     "recv_window_scale congestion_window bytes_received lastack backoff timer local_port")
@@ -152,12 +148,16 @@ def main():
         process_socket_line(line1 + ' ' + line2)
 
     print("%-9s  %-21s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % ("LocalPort", "Client", "State", "Backoff", "Timer", "LastACK", "SendQueue", "RecvQueue", "BytesRecv"))
-    for socket in sorted(sockets, key=lambda socket: socket.backoff, reverse=True)[:TOP]:
+    for socket in sorted(sockets, key=lambda socket: socket.lastack, reverse=True)[:TOP]:
         print("%-9s  %-21s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % (socket.local_port, socket.remote_addr, socket.state, str(socket.backoff), socket.timer, str(socket.lastack) + "ms", \
             str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received)))
 
     print('')
     print('Total clients: %d' % len(sockets))
     print_counts_by_state()
+
+
+if len(sys.argv) > 1:
+    ss_params.append('( sport = :' + sys.argv[1] + ' )')
 
 main()
