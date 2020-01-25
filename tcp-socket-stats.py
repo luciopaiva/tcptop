@@ -19,7 +19,8 @@ from names import string_to_name
 # how many sockets to show in the result list
 TOP = 15
 
-ss_params = ['ss', '-minto', 'state', 'connected']
+selected_state = ''
+ss_params = ['ss', '-minto']
 
 Socket = namedtuple("Socket", "state local_addr remote_addr send_queue recv_queue retrans_cur retrans_total " + \
     "send_window_scale recv_window_scale congestion_window bytes_received lastack backoff timer local_port unacked")
@@ -41,12 +42,18 @@ def run_ss():
 def process_socket_line(socket_line):
     fields = socket_line.split()
 
-    state = fields[0]
-    recv_queue = fields[1]
-    send_queue = fields[2]
-    local_addr = fields[3]
+    if fields[0].isdigit():
+        state = selected_state
+        field_delta = -1
+    else:
+        state = fields[0]
+        field_delta = 0
+
+    recv_queue = fields[1 + field_delta]
+    send_queue = fields[2 + field_delta]
+    local_addr = fields[3 + field_delta]
     local_port = local_addr.split(":")[1]
-    remote_addr = fields[4]
+    remote_addr = fields[4 + field_delta]
 
     retrans_cur, retrans_total = 0, 0
     send_window_scale, recv_window_scale = 0, 0
@@ -166,23 +173,29 @@ def main():
     for line1, line2 in zip(lines[::2], lines[1::2]):  # each socket occupies two lines in the output
         process_socket_line(line1 + ' ' + line2)
 
-    print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-10s  %-7s  %-5s  %-7s" % \
+    print("%-9s  %-21s  %-11s  %-12s  %-7s  %-9s  %-9s  %-9s  %-9s  %-7s  %-5s  %-7s  %-10s" % \
         ("LocalPort", "Client", "Alias", "State", "Backoff", "Timer", "SendQueue", "RecvQueue", "BytesRecv", \
-        "LastACK", "Unacked", "RTCur", "RTTotal"))
+        "Unacked", "RTCur", "RTTotal", "LastACK"))
 
     for socket in sorted(sockets, key=lambda socket: socket.lastack, reverse=True)[:TOP]:
         alias = string_to_name(socket.remote_addr)
         last_ack_human = time_to_human(socket.lastack)
-        print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-10s  %-7d  %-5d  %-7d" % \
+        print("%-9s  %-21s  %-11s  %-12s  %-7s  %-9s  %-9s  %-9s  %-9s  %-7d  %-5d  %-7d  %-10s" % \
             (socket.local_port, socket.remote_addr, alias, socket.state, str(socket.backoff), socket.timer, \
-            str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received), last_ack_human, \
-            socket.unacked, socket.retrans_cur, socket.retrans_total))
+            str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received), socket.unacked, \
+                socket.retrans_cur, socket.retrans_total, last_ack_human))
 
     print('')
     print('Total clients: %d' % len(sockets))
     print('')
     print_counts_by_state()
 
+
+if len(sys.argv) > 2:
+    selected_state = sys.argv[2]
+    ss_params.extend(['state', selected_state])
+else:
+    ss_params.extend(['state', 'connected'])
 
 if len(sys.argv) > 1:
     ss_params.append('( sport = :' + sys.argv[1] + ' )')
