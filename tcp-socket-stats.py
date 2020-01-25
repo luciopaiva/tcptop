@@ -149,9 +149,9 @@ def main():
     for line1, line2 in zip(lines[::2], lines[1::2]):  # each socket occupies two lines in the output
         process_socket_line(line1 + ' ' + line2)
 
-    print("%-21s  %-10s  %-7s  %-9s  %-8s  %-9s  %-9s  %-9s" % ("Address", "State", "Backoff", "Timer", "LastACK", "SendQueue", "RecvQueue", "BytesRecv"))
+    print("%-21s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % ("Address", "State", "Backoff", "Timer", "LastACK", "SendQueue", "RecvQueue", "BytesRecv"))
     for socket in sorted(sockets, key=lambda socket: socket.backoff, reverse=True)[:TOP]:
-        print("%-21s  %-10s  %-7s  %-9s  %-8s  %-9s  %-9s  %-9s" % (socket.addr, socket.state, str(socket.backoff), socket.timer, str(socket.lastack) + "ms", \
+        print("%-21s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % (socket.addr, socket.state, str(socket.backoff), socket.timer, str(socket.lastack) + "ms", \
             str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received)))
 
     print('')
