@@ -22,7 +22,7 @@ TOP = 15
 ss_params = ['ss', '-minto', 'state', 'connected']
 
 Socket = namedtuple("Socket", "state local_addr remote_addr send_queue recv_queue retrans_cur retrans_total " + \
-    "send_window_scale recv_window_scale congestion_window bytes_received lastack backoff timer local_port")
+    "send_window_scale recv_window_scale congestion_window bytes_received lastack backoff timer local_port unacked")
 
 sockets = []
 
@@ -55,6 +55,7 @@ def process_socket_line(socket_line):
     lastack = 0
     backoff = 0
     timer = 0
+    unacked = 0
 
     for field in fields:
         if field.startswith('retrans:'):
@@ -71,12 +72,14 @@ def process_socket_line(socket_line):
             backoff = parse_backoff(field)
         elif field.startswith('timer:'):
             timer = parse_timer(field)
+        elif field.startswith('unacked:'):
+            unacked = parse_unacked(field)
 
     socket = Socket(state=state, local_addr=local_addr, remote_addr=remote_addr, recv_queue=recv_queue, \
         send_queue=send_queue, retrans_cur=retrans_cur, retrans_total=retrans_total, \
         send_window_scale=send_window_scale, recv_window_scale=recv_window_scale, \
         congestion_window=congestion_window, bytes_received=bytes_received, lastack=lastack, timer=timer, \
-        backoff=backoff, local_port=local_port)
+        backoff=backoff, local_port=local_port, unacked=unacked)
     sockets.append(socket)
 
 
@@ -136,6 +139,12 @@ def parse_backoff(field):
     """
     return int(field[8:])
 
+def parse_unacked(field):
+    """ unacked:3
+        how many segments are in-flight, still not ACKed by the remote peer
+    """
+    return int(field[8:])
+
 def print_counts_by_state():
     counts_by_state = defaultdict(int)
     for socket in sockets:
@@ -157,15 +166,16 @@ def main():
     for line1, line2 in zip(lines[::2], lines[1::2]):  # each socket occupies two lines in the output
         process_socket_line(line1 + ' ' + line2)
 
-    print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % \
-        ("LocalPort", "Client", "Alias", "State", "Backoff", "Timer", "SendQueue", "RecvQueue", "BytesRecv", "LastACK"))
+    print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-10s  %-9s" % \
+        ("LocalPort", "Client", "Alias", "State", "Backoff", "Timer", "SendQueue", "RecvQueue", "BytesRecv", \
+        "LastACK", "Unacked"))
 
     for socket in sorted(sockets, key=lambda socket: socket.lastack, reverse=True)[:TOP]:
         alias = string_to_name(socket.remote_addr)
         last_ack_human = time_to_human(socket.lastack)
-        print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % \
+        print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-10s  %-9s" % \
             (socket.local_port, socket.remote_addr, alias, socket.state, str(socket.backoff), socket.timer, \
-            str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received), last_ack_human))
+            str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received), last_ack_human, socket.unacked))
 
     print('')
     print('Total clients: %d' % len(sockets))
