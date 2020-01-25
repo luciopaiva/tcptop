@@ -1,5 +1,7 @@
 
-# tcp-socket-stats
+# tcp-retries
+
+Python script to list TCP clients having retransmission problems. The scripts probes the `ss` command to obtain the data and then sorts connections by last ACK time, oldest first.
 
 This script needs Python 2.7.
 
