@@ -23,8 +23,8 @@ ss_params = ['ss', '-minto', 'state', 'connected']
 if PORT > 0:
     ss_params.append('( sport = :' + str(PORT) + ' )')
 
-Socket = namedtuple("Socket", "state addr send_queue recv_queue retrans_cur retrans_total send_window_scale " + \
-    "recv_window_scale congestion_window bytes_received lastack backoff timer")
+Socket = namedtuple("Socket", "state local_addr remote_addr send_queue recv_queue retrans_cur retrans_total send_window_scale " + \
+    "recv_window_scale congestion_window bytes_received lastack backoff timer local_port")
 
 sockets = []
 
@@ -46,7 +46,9 @@ def process_socket_line(socket_line):
     state = fields[0]
     recv_queue = fields[1]
     send_queue = fields[2]
-    addr = fields[4]
+    local_addr = fields[3]
+    local_port = local_addr.split(":")[1]
+    remote_addr = fields[4]
 
     retrans_cur, retrans_total = 0, 0
     send_window_scale, recv_window_scale = 0, 0
@@ -72,9 +74,9 @@ def process_socket_line(socket_line):
         elif field.startswith('timer:'):
             timer = parse_timer(field)
 
-    socket = Socket(state=state, addr=addr, recv_queue=recv_queue, send_queue=send_queue, retrans_cur=retrans_cur, retrans_total=retrans_total, \
-        send_window_scale=send_window_scale, recv_window_scale=recv_window_scale, congestion_window=congestion_window, bytes_received=bytes_received, \
-        lastack=lastack, timer=timer, backoff=backoff)
+    socket = Socket(state=state, local_addr=local_addr, remote_addr=remote_addr, recv_queue=recv_queue, send_queue=send_queue, retrans_cur=retrans_cur, \
+        retrans_total=retrans_total, send_window_scale=send_window_scale, recv_window_scale=recv_window_scale, congestion_window=congestion_window, \
+        bytes_received=bytes_received, lastack=lastack, timer=timer, backoff=backoff, local_port=local_port)
     sockets.append(socket)
 
 
@@ -149,9 +151,9 @@ def main():
     for line1, line2 in zip(lines[::2], lines[1::2]):  # each socket occupies two lines in the output
         process_socket_line(line1 + ' ' + line2)
 
-    print("%-21s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % ("Address", "State", "Backoff", "Timer", "LastACK", "SendQueue", "RecvQueue", "BytesRecv"))
+    print("%-9s  %-21s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % ("LocalPort", "Client", "State", "Backoff", "Timer", "LastACK", "SendQueue", "RecvQueue", "BytesRecv"))
     for socket in sorted(sockets, key=lambda socket: socket.backoff, reverse=True)[:TOP]:
-        print("%-21s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % (socket.addr, socket.state, str(socket.backoff), socket.timer, str(socket.lastack) + "ms", \
+        print("%-9s  %-21s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s" % (socket.local_port, socket.remote_addr, socket.state, str(socket.backoff), socket.timer, str(socket.lastack) + "ms", \
             str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received)))
 
     print('')
