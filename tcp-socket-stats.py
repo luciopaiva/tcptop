@@ -15,7 +15,7 @@ import operator
 from collections import namedtuple, defaultdict
 
 # how many sockets to show in the result list
-TOP = 20
+TOP = 15
 
 ss_params = ['ss', '-minto', 'state', 'connected']
 
