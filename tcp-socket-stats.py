@@ -166,16 +166,17 @@ def main():
     for line1, line2 in zip(lines[::2], lines[1::2]):  # each socket occupies two lines in the output
         process_socket_line(line1 + ' ' + line2)
 
-    print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-10s  %-9s" % \
+    print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-10s  %-7s  %-5s  %-7s" % \
         ("LocalPort", "Client", "Alias", "State", "Backoff", "Timer", "SendQueue", "RecvQueue", "BytesRecv", \
-        "LastACK", "Unacked"))
+        "LastACK", "Unacked", "RTCur", "RTTotal"))
 
     for socket in sorted(sockets, key=lambda socket: socket.lastack, reverse=True)[:TOP]:
         alias = string_to_name(socket.remote_addr)
         last_ack_human = time_to_human(socket.lastack)
-        print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-10s  %-9s" % \
+        print("%-9s  %-21s  %-11s  %-10s  %-7s  %-9s  %-9s  %-9s  %-9s  %-10s  %-7d  %-5d  %-7d" % \
             (socket.local_port, socket.remote_addr, alias, socket.state, str(socket.backoff), socket.timer, \
-            str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received), last_ack_human, socket.unacked))
+            str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received), last_ack_human, \
+            socket.unacked, socket.retrans_cur, socket.retrans_total))
 
     print('')
     print('Total clients: %d' % len(sockets))
