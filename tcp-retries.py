@@ -22,11 +22,54 @@ TOP = 15
 selected_state = ''
 ss_params = ['ss', '-minto']
 
-Socket = namedtuple("Socket", "state local_addr remote_addr send_queue recv_queue retrans_cur retrans_total " +
-                    "send_window_scale recv_window_scale congestion_window bytes_received lastack backoff timer " +
-                    "local_port unacked rto mss ssthresh segs_out segs_in tx tx_buffer")
+SocketParam = namedtuple("SocketParam", "index name format_str format_fn header_name")
+socket_param_by_index = dict()
+socket_param_by_name = dict()
+next_param_index = 0
+
+
+def setup_socket_param(name, format_str, header_name):
+    global next_param_index
+    socket_param = SocketParam(next_param_index, name, "%-{}s".format(format_str), str, header_name)
+    socket_param_by_index[next_param_index] = socket_param
+    socket_param_by_name[socket_param.name] = socket_param
+    next_param_index += 1
+
+
+setup_socket_param("local_port", "10",        "LocalPort")
+setup_socket_param("local_addr", "21",        "LocalAddr")
+setup_socket_param("remote_addr", "21",       "RemoteAddr")
+setup_socket_param("state", "12",             "State")
+setup_socket_param("backoff", "7",            "Backoff")
+setup_socket_param("rto", "9",                "RTO")
+setup_socket_param("timer", "9",              "Timer")
+setup_socket_param("send_queue", "9",         "SendQ")
+setup_socket_param("recv_queue", "9",         "RecvQ")
+setup_socket_param("bytes_recv", "9",         "BytesRecv")
+setup_socket_param("unacked", "7",            "UnACKed")
+setup_socket_param("retrans_cur", "7",        "RetrCur")
+setup_socket_param("retrans_total", "9",      "RetrTotal")
+setup_socket_param("mss", "6",                "MSS")
+setup_socket_param("ssthresh", "8",           "SSThresh")
+setup_socket_param("segs_in", "8",            "SegsIn")
+setup_socket_param("segs_out", "8",           "SegsOut")
+setup_socket_param("send_window_scale", "10", "SendWndScl")
+setup_socket_param("recv_window_scale", "10", "RecvWndScl")
+setup_socket_param("congestion_window", "10", "CongWnd")
+setup_socket_param("lastack", "10",           "LastAck")
+setup_socket_param("tx", "10",                "Tx")
+setup_socket_param("tx_buffer", "10",         "TxBuffer")
+setup_socket_param("alias", "11",             "Alias")
+setup_socket_param("last_ack_human", "10",    "LastAck")
+
+param_names = " ".join([param.name for param in socket_param_by_index.values()])
+Socket = namedtuple("Socket", param_names)
 
 sockets = []
+
+selected_columns = ["local_port", "remote_addr", "alias", "state", "backoff", "rto", "timer", "send_queue",
+                    "recv_queue", "bytes_recv", "unacked", "retrans_cur", "retrans_total", "mss", "ssthresh", "segs_in",
+                    "segs_out", "last_ack_human"]
 
 
 def run_ss():
@@ -59,7 +102,7 @@ def process_socket_line(socket_line):
     retrans_cur, retrans_total = 0, 0
     send_window_scale, recv_window_scale = 0, 0
     congestion_window = 0
-    bytes_received = 0
+    bytes_recv = 0
     lastack = 0
     backoff = 0
     timer = 0
@@ -80,7 +123,7 @@ def process_socket_line(socket_line):
         elif field.startswith('cwnd:'):
             congestion_window = parse_cwnd(field)
         elif field.startswith('bytes_received:'):
-            bytes_received = parse_bytes_received(field)
+            bytes_recv = parse_bytes_recv(field)
         elif field.startswith('lastack:'):
             lastack = parse_lastack(field)
         elif field.startswith('backoff:'):
@@ -105,9 +148,9 @@ def process_socket_line(socket_line):
     socket = Socket(state=state, local_addr=local_addr, remote_addr=remote_addr, recv_queue=recv_queue,
                     send_queue=send_queue, retrans_cur=retrans_cur, retrans_total=retrans_total,
                     send_window_scale=send_window_scale, recv_window_scale=recv_window_scale,
-                    congestion_window=congestion_window, bytes_received=bytes_received, lastack=lastack, timer=timer,
+                    congestion_window=congestion_window, bytes_recv=bytes_recv, lastack=lastack, timer=timer,
                     backoff=backoff, local_port=local_port, unacked=unacked, rto=rto, mss=mss, ssthresh=ssthresh,
-                    segs_out=segs_out, segs_in=segs_in, tx=tx, tx_buffer=tx_buffer)
+                    segs_out=segs_out, segs_in=segs_in, tx=tx, tx_buffer=tx_buffer, alias="", last_ack_human="")
     sockets.append(socket)
 
 
@@ -142,7 +185,7 @@ def parse_cwnd(field):
     return int(field[5:])
 
 
-def parse_bytes_received(field):
+def parse_bytes_recv(field):
     """ bytes_received:1
         how many bytes were received by this socket since the connection was established
     """
@@ -255,20 +298,28 @@ def main():
     for line1, line2 in zip(lines[::2], lines[1::2]):  # each socket occupies two lines in the output
         process_socket_line(line1 + ' ' + line2)
 
-    print(("%-9s  %-21s  %-11s  %-12s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s  %-7s  %-5s  %-7s  %-5s  %-7s  %-7s  %-7s" +
-           "  %-10s") %
-          ("LocalPort", "Client", "Alias", "State", "Backoff", "RTO", "Timer", "SendQueue", "RecvQueue", "BytesRecv",
-           "Unacked", "RTCur", "RTTotal", "MSS", "SSThres", "SegsOut", "SegsIn", "LastACK"))
+    line_format = []
+    header_names = []
+    for name in selected_columns:
+        sparam = socket_param_by_name[name]
+        line_format.append(sparam.format_str)
+        header_names.append(sparam.header_name)
+    line_format = " ".join(line_format)
+    print(line_format % tuple(header_names))
 
     for socket in sorted(sockets, key=lambda sock: sock.lastack, reverse=True)[:TOP]:
         alias = string_to_name(socket.remote_addr)
         last_ack_human = time_to_human(socket.lastack)
-        print(("%-9s  %-21s  %-11s  %-12s  %-7s  %-9s  %-9s  %-9s  %-9s  %-9s  %-7d  %-5d  %-7d  %-5d  %-7d  %-7d" +
-               "  %-7d  %-10s") %
-              (socket.local_port, socket.remote_addr, alias, socket.state, str(socket.backoff), socket.rto,
-               socket.timer, str(socket.send_queue), str(socket.recv_queue), str(socket.bytes_received), socket.unacked,
-               socket.retrans_cur, socket.retrans_total, socket.mss, socket.ssthresh, socket.segs_in, socket.segs_in,
-               last_ack_human))
+        values = []
+        for name in selected_columns:
+            if name is "alias":
+                values.append(alias)
+            elif name is "last_ack_human":
+                values.append(last_ack_human)
+            else:
+                sparam = socket_param_by_name[name]
+                values.append(socket[sparam.index])
+        print(line_format % tuple(values))
 
     print('')
     print('Total clients: %d' % len(sockets))
