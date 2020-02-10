@@ -9,9 +9,10 @@
 # Reference for the ss field descriptions: http://man7.org/linux/man-pages/man8/ss.8.html
 #
 
-import sys
-import subprocess
+import argparse
 import operator
+import subprocess
+import sys
 from collections import namedtuple, defaultdict
 from names import string_to_name
 
@@ -23,7 +24,7 @@ ss_params = ['ss', '-minto']
 
 Socket = namedtuple("Socket", "state local_addr remote_addr send_queue recv_queue retrans_cur retrans_total " +
                     "send_window_scale recv_window_scale congestion_window bytes_received lastack backoff timer " +
-                    "local_port unacked rto mss ssthresh segs_out segs_in")
+                    "local_port unacked rto mss ssthresh segs_out segs_in tx tx_buffer")
 
 sockets = []
 
@@ -68,6 +69,8 @@ def process_socket_line(socket_line):
     ssthresh = 0
     segs_out = 0
     segs_in = 0
+    tx = 0
+    tx_buffer = 0
 
     for field in fields:
         if field.startswith('retrans:'):
@@ -96,13 +99,15 @@ def process_socket_line(socket_line):
             segs_out = parse_segs_out(field)
         elif field.startswith('segs_in:'):
             segs_in = parse_segs_in(field)
+        elif field.startswith('skmem:'):
+            tx, tx_buffer = parse_skmem(field)
 
     socket = Socket(state=state, local_addr=local_addr, remote_addr=remote_addr, recv_queue=recv_queue,
                     send_queue=send_queue, retrans_cur=retrans_cur, retrans_total=retrans_total,
                     send_window_scale=send_window_scale, recv_window_scale=recv_window_scale,
                     congestion_window=congestion_window, bytes_received=bytes_received, lastack=lastack, timer=timer,
                     backoff=backoff, local_port=local_port, unacked=unacked, rto=rto, mss=mss, ssthresh=ssthresh,
-                    segs_out=segs_out, segs_in=segs_in)
+                    segs_out=segs_out, segs_in=segs_in, tx=tx, tx_buffer=tx_buffer)
     sockets.append(socket)
 
 
@@ -210,6 +215,21 @@ def parse_segs_in(field):
         segments received
     """
     return int(field[8:])
+
+
+def parse_skmem(field):
+    """ skmem:(r0,rb233880,t0,tb46080,f1792,w2304,o0,bl0)
+        socket memory parameters
+    """
+    sub_fields = field[7:-1].split(",")
+    tx = 0
+    tx_buffer = 0
+    for sub_field in sub_fields:
+        if sub_field.startswith("tb"):
+            tx_buffer = int(sub_field[2:])
+        elif sub_field.startswith("t"):
+            tx = int(sub_field[1:])
+    return tx, tx_buffer
 
 
 def print_counts_by_state():
