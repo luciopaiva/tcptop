@@ -3,7 +3,7 @@
 
 ![](screenshot.png)
 
-Python script to list TCP clients having retransmission problems. The scripts probes the `ss` command to obtain the data and then sorts connections by last ACK time, oldest first.
+Python script to list TCP clients having retransmission problems (from a Linux server standpoint). The scripts probes the `ss` command to obtain the data and then sorts connections by last ACK time, oldest first.
 
 The script shows several fields (the screenshot above shows only a few), but the most important are:
 
