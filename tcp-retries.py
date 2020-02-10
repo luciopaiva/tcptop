@@ -12,12 +12,28 @@
 import argparse
 import operator
 import subprocess
-import sys
 from collections import namedtuple, defaultdict
+
 from names import string_to_name
+
+VERSION_MAJOR = 1
+VERSION_MINOR = 1
+VERSION_PATCH = 0
 
 # how many sockets to show in the result list
 TOP = 15
+
+parser = argparse.ArgumentParser(
+    description="Like top, but for TCP sockets." 
+                "Check https://github.com/luciopaiva/topsocket for more details.")
+parser.add_argument("-p", "--port", dest="port", help="Port to filter by")
+parser.add_argument("-s", "--state", dest="state", default="connected", help="Filter sockets by state")
+parser.add_argument("-o", "--order", dest="order", default="lastack", help="Field to order by")
+parser.add_argument("-R", "--reverse", dest="reverse", action="store_true", default=False, help="Reverse order")
+parser.add_argument("-v", "--version", action="store_true", default=False, help="Just print version and exit")
+parser.add_argument("-c", "--columns", nargs='*', help="Comma-separated list of columns to show", default=None)
+arguments = parser.parse_args()
+
 
 selected_state = ''
 ss_params = ['ss', '-minto']
@@ -292,6 +308,14 @@ def time_to_human(time):
 
 
 def main():
+    if arguments.version:
+        print("{}.{}.{}".format(VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH))
+        exit(0)
+
+    ss_params.extend(['state', arguments.state])
+    if arguments.port:
+        ss_params.append('( sport = :' + arguments.port + ' )')
+
     lines = run_ss()
     # run ss and obtain raw data from it
 
@@ -307,7 +331,8 @@ def main():
     line_format = " ".join(line_format)
     print(line_format % tuple(header_names))
 
-    for socket in sorted(sockets, key=lambda sock: sock.lastack, reverse=True)[:TOP]:
+    sort_param = socket_param_by_name[arguments.order].index
+    for socket in sorted(sockets, key=lambda sock: int(sock[sort_param]), reverse=not arguments.reverse)[:TOP]:
         alias = string_to_name(socket.remote_addr)
         last_ack_human = time_to_human(socket.lastack)
         values = []
@@ -326,14 +351,5 @@ def main():
     print('')
     print_counts_by_state()
 
-
-if len(sys.argv) > 2:
-    selected_state = sys.argv[2]
-    ss_params.extend(['state', selected_state])
-else:
-    ss_params.extend(['state', 'connected'])
-
-if len(sys.argv) > 1:
-    ss_params.append('( sport = :' + sys.argv[1] + ' )')
 
 main()
