@@ -7,6 +7,10 @@ Just like `top`, but for TCP sockets.
 
 Relies on the `ss` command to work, so only expect it to work on Linux. Other than that, you need Python 2.7, which should also be easily available.
 
+## Download and install
+
+    bash <(curl -s https://raw.githubusercontent.com/luciopaiva/tcptop/master/install.sh)
+
 ## retries.sh
 
 ![](screenshot.png)
@@ -32,6 +36,8 @@ Where `PORT` is an optional port to filter the results. Pass nothing to have no 
 ## txbuffers.sh
 
 Script to help identify sockets with largest the transmission buffers currently connected.
+
+    ./txbuffers.sh PORT
 
 ## Acknowledgements
 
