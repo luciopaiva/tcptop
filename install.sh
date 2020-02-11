@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-URL="https://github.com/luciopaiva/tcptop/archive/v0.1.0.tar.gz"
+URL="https://github.com/luciopaiva/tcptop/archive/v0.1.1.tar.gz"
 
 cd ~
 mkdir -p bin
