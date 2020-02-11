@@ -9,6 +9,8 @@ Relies on the `ss` command to work, so only expect it to work on Linux. Other th
 
 ## Download and install
 
+The following script will automatically download and install `tcptop` in `~/bin/tcptop-x.y.z`:
+
     bash <(curl -s https://raw.githubusercontent.com/luciopaiva/tcptop/master/install.sh)
 
 ## retries.sh
