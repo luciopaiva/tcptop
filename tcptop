@@ -18,9 +18,6 @@ VERSION_MAJOR = 1
 VERSION_MINOR = 1
 VERSION_PATCH = 0
 
-# how many sockets to show in the result list
-TOP = 15
-
 parser = argparse.ArgumentParser(
     description="Like top, but for TCP sockets." 
                 "Check https://github.com/luciopaiva/topsocket for more details.")
@@ -30,6 +27,7 @@ parser.add_argument("-o", "--order", dest="order", default="lastack", help="Fiel
 parser.add_argument("-R", "--reverse", dest="reverse", action="store_true", default=False, help="Reverse order")
 parser.add_argument("-v", "--version", action="store_true", default=False, help="Just print version and exit")
 parser.add_argument("-c", "--columns", nargs='?', help="Comma-separated list of columns to show", default=None)
+parser.add_argument("-l", "--limit", nargs='?', type=int, help="How many sockets to show", default=15)
 arguments = parser.parse_args()
 
 
@@ -360,7 +358,7 @@ def main():
 
     line_format = print_header_and_build_line_format(columns)
 
-    for socket in sorted_sockets()[:TOP]:
+    for socket in sorted_sockets()[:arguments.limit]:
         print_socket(socket, line_format, columns)
 
     print('')
