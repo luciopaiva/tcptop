@@ -1,5 +1,13 @@
 
-# tcp-retries
+# TCP top
+
+Just like `top`, but for TCP sockets.
+
+## Requirements
+
+Relies on the `ss` command to work, so only expect it to work on Linux. Other than that, you need Python 2.7, which should also be easily available.
+
+## retries.sh
 
 ![](screenshot.png)
 
@@ -15,21 +23,15 @@ For descriptions about the other fields, check the source code.
 
 The `Alias` column is just something to help the human eye track a connection as it moves up the table (we are not good at reading IPs).
 
-This script needs Python 2.7.
-
 How to run:
 
-    watch -n1 ./tcp-socket-stats.py
+    ./retries.sh PORT
 
-Optionally, you may pass your server's listening port to filter client sockets:
+Where `PORT` is an optional port to filter the results. Pass nothing to have no filter applied.
 
-    watch -n1 ./tcp-socket-stats.py 8080
+## txbuffers.sh
 
-You can also filter sockets by state:
-
-    watch -n1 ./tcp-socket-stats.py 8080 established
-
-Refer to `man ss` for valid state strings. If you want to filter by state but not by port, pass `0` as the port.
+Script to help identify sockets with largest the transmission buffers currently connected.
 
 ## Acknowledgements
 
