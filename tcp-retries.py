@@ -31,7 +31,7 @@ parser.add_argument("-s", "--state", dest="state", default="connected", help="Fi
 parser.add_argument("-o", "--order", dest="order", default="lastack", help="Field to order by")
 parser.add_argument("-R", "--reverse", dest="reverse", action="store_true", default=False, help="Reverse order")
 parser.add_argument("-v", "--version", action="store_true", default=False, help="Just print version and exit")
-parser.add_argument("-c", "--columns", nargs='*', help="Comma-separated list of columns to show", default=None)
+parser.add_argument("-c", "--columns", nargs='?', help="Comma-separated list of columns to show", default=None)
 arguments = parser.parse_args()
 
 
@@ -52,7 +52,7 @@ def setup_socket_param(name, format_str, header_name):
     next_param_index += 1
 
 
-setup_socket_param("local_port", "10",        "LocalPort")
+setup_socket_param("local_port", "9",         "LocalPort")
 setup_socket_param("local_addr", "21",        "LocalAddr")
 setup_socket_param("remote_addr", "21",       "RemoteAddr")
 setup_socket_param("state", "12",             "State")
@@ -83,7 +83,7 @@ Socket = namedtuple("Socket", param_names)
 
 sockets = []
 
-selected_columns = ["local_port", "remote_addr", "alias", "state", "backoff", "rto", "timer", "send_queue",
+default_columns = ["local_port", "remote_addr", "alias", "state", "backoff", "rto", "timer", "send_queue",
                     "recv_queue", "bytes_recv", "unacked", "retrans_cur", "retrans_total", "mss", "ssthresh", "segs_in",
                     "segs_out", "last_ack_human"]
 
@@ -168,6 +168,14 @@ def process_socket_line(socket_line):
                     backoff=backoff, local_port=local_port, unacked=unacked, rto=rto, mss=mss, ssthresh=ssthresh,
                     segs_out=segs_out, segs_in=segs_in, tx=tx, tx_buffer=tx_buffer, alias="", last_ack_human="")
     sockets.append(socket)
+
+
+def run_ss_and_process_sockets():
+    lines = run_ss()
+    # run ss and obtain raw data from it
+
+    for line1, line2 in zip(lines[::2], lines[1::2]):  # each socket occupies two lines in the output
+        process_socket_line(line1 + ' ' + line2)
 
 
 def parse_retrans(field):
@@ -307,6 +315,38 @@ def time_to_human(time):
     return "%dmin%dsec" % (minutes, seconds)
 
 
+def print_header_and_build_line_format(columns):
+    line_format = []
+    header_names = []
+    for name in columns:
+        sparam = socket_param_by_name[name]
+        line_format.append(sparam.format_str)
+        header_names.append(sparam.header_name)
+    line_format = " ".join(line_format)
+    print(line_format % tuple(header_names))
+    return line_format
+
+
+def sorted_sockets():
+    sort_param = socket_param_by_name[arguments.order].index
+    return sorted(sockets, key=lambda sock: int(sock[sort_param]), reverse=not arguments.reverse)
+
+
+def print_socket(socket, line_format, columns):
+    values = []
+    for name in columns:
+        if name == "alias":
+            alias = string_to_name(socket.remote_addr)
+            values.append(alias)
+        elif name == "last_ack_human":
+            last_ack_human = time_to_human(socket.lastack)
+            values.append(last_ack_human)
+        else:
+            sparam = socket_param_by_name[name]
+            values.append(socket[sparam.index])
+    print(line_format % tuple(values))
+
+
 def main():
     if arguments.version:
         print("{}.{}.{}".format(VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH))
@@ -316,35 +356,14 @@ def main():
     if arguments.port:
         ss_params.append('( sport = :' + arguments.port + ' )')
 
-    lines = run_ss()
-    # run ss and obtain raw data from it
+    columns = arguments.columns.split(",") if arguments.columns else default_columns
 
-    for line1, line2 in zip(lines[::2], lines[1::2]):  # each socket occupies two lines in the output
-        process_socket_line(line1 + ' ' + line2)
+    run_ss_and_process_sockets()
 
-    line_format = []
-    header_names = []
-    for name in selected_columns:
-        sparam = socket_param_by_name[name]
-        line_format.append(sparam.format_str)
-        header_names.append(sparam.header_name)
-    line_format = " ".join(line_format)
-    print(line_format % tuple(header_names))
+    line_format = print_header_and_build_line_format(columns)
 
-    sort_param = socket_param_by_name[arguments.order].index
-    for socket in sorted(sockets, key=lambda sock: int(sock[sort_param]), reverse=not arguments.reverse)[:TOP]:
-        alias = string_to_name(socket.remote_addr)
-        last_ack_human = time_to_human(socket.lastack)
-        values = []
-        for name in selected_columns:
-            if name is "alias":
-                values.append(alias)
-            elif name is "last_ack_human":
-                values.append(last_ack_human)
-            else:
-                sparam = socket_param_by_name[name]
-                values.append(socket[sparam.index])
-        print(line_format % tuple(values))
+    for socket in sorted_sockets()[:TOP]:
+        print_socket(socket, line_format, columns)
 
     print('')
     print('Total clients: %d' % len(sockets))

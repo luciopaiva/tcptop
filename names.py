@@ -1,6 +1,7 @@
 
-with open('names.txt') as file:
-    names = [line.strip() for line in file]
+with open('names.txt') as f:
+    names = [line.strip() for line in f]
+
 
 def string_to_name(s):
     i = hash(s)
